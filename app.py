@@ -1,61 +1,44 @@
+import sys
 import pandas as pd
 
 from PySide6.QtWidgets import *
 from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize
 from PySide6.QtGui import QAction, QIcon, QKeySequence
-import sys
-from modules.dataframe_model import PandasModel
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
+from modules.dataframe_model import PandasModel
+from modules.mpl_plot import PlotWidget
+from modules.visualization import PlotAction
+
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-
-class MplCanvas(FigureCanvasQTAgg):
-
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
 
 class AppMainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Pandas Model")
         self.resize(800, 500)
-        self.create_menu()
-        self.create_tool_bar()
-        self.setStatusBar(QStatusBar(self))
 
+        self.create_menu()
+        # 创建一个空的表格
+        self.table_widget = QTableWidget()
+        self.setCentralWidget(self.table_widget)
+        # self.create_tool_bar()
+        # self.setStatusBar(QStatusBar(self))
+
+    def create_table_widget(self, data_frame):
         view = QTableView()
         view.horizontalHeader().setStretchLastSection(True)
         view.setAlternatingRowColors(True)
         view.setSelectionBehavior(QTableView.SelectRows)
-        df = pd.read_csv("iris.csv")
-        model = PandasModel(df)
+        # df = pd.read_csv(data_frame)
+        model = PandasModel(data_frame)
         view.setModel(model)
-
+        self.current_table = data_frame
         self.tabWidget = QTabWidget(self)
         self.tabWidget.addTab(view, "iris.csv")
         self.setCentralWidget(self.tabWidget)
-        self.createDockWidget()
 
-        sc = MplCanvas(self, width=5, height=4, dpi=100)
-        sc.axes.plot([0,1,2,3,4], [10,1,20,3,40])
-        toolbar = NavigationToolbar(sc, self)
-
-        layout = QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(sc)
-        widget = QWidget()
-        widget.setLayout(layout)
-        self.create_plot(widget)
-
-    def create_plot(self, widget):
-        dockWidget = QDockWidget("可关闭/右侧栏", self)
-        dockWidget.setWidget(widget)
-        dockWidget.setFloating(True)
-        self.addDockWidget(Qt.RightDockWidgetArea, dockWidget)
-        # dockWidget.setFeatures(QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
     def create_tool_bar(self):
 
@@ -83,7 +66,7 @@ class AppMainWindow(QMainWindow):
         file_menu = menubar.addMenu("文件")
 
         new_action = QAction("新建", self)
-        new_action.triggered.connect(self.new_document)
+        # new_action.triggered.connect(self.new_document)
         file_menu.addAction(new_action)
 
         open_action = QAction("打开", self)
@@ -99,18 +82,20 @@ class AppMainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         edit_menu = menubar.addMenu("编辑")
-        stat_menu = menubar.addMenu("统计")
-        plot_menu = menubar.addMenu("可视化")
+        edit_menu.addAction(QAction("剪切", self))
 
-    def createDockWidget(self):
-        dockWidget = QDockWidget("可关闭/右侧栏", self)
-        listWidget = QListWidget()
-        listWidget.addItem(f"dock1-item1")
-        listWidget.addItem(f"dock2-item2")
-        listWidget.addItem(f"dock3-item3")
-        dockWidget.setWidget(listWidget)
-        self.addDockWidget(Qt.RightDockWidgetArea, dockWidget)
-        dockWidget.setFeatures(QDockWidget.DockWidgetClosable)
+        stat_menu = menubar.addMenu("统计")
+        t_test = QAction("T检验", self)
+        stat_menu.addAction(t_test)
+
+        plot_action = PlotAction(self)
+        plot_menu = menubar.addMenu("可视化")
+        scatter_action = QAction("散点图", self)
+        scatter_action.triggered.connect(plot_action.create_scatter_dock)
+        plot_menu.addAction(scatter_action)
+        
+        help_menu = menubar.addMenu("帮助")
+
 
     def onMyToolBarButtonClick(self, s):
         print("click", s)
@@ -127,7 +112,7 @@ class AppMainWindow(QMainWindow):
             try:
                 # 读取表格文件并加载到QTableWidget中
                 df = pd.read_csv(file_name)  # 也可以使用 pd.read_excel() 处理.xlsx文件
-                self.load_table_data(df)
+                self.create_table_widget(df)
             except pd.errors.ParserError:
                 print("无法打开此文件")
 
