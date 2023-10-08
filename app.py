@@ -7,7 +7,7 @@ from PySide6.QtGui import QAction, QIcon, QKeySequence
 
 from modules.dataframe_model import PandasModel
 from modules.mpl_plot import PlotWidget
-from modules.visualization import PlotAction
+from modules.visualization import PlotDockWidget
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -88,14 +88,26 @@ class AppMainWindow(QMainWindow):
         t_test = QAction("T检验", self)
         stat_menu.addAction(t_test)
 
-        plot_action = PlotAction(self)
+        # plot_action = PlotAction(self)
         plot_menu = menubar.addMenu("可视化")
         scatter_action = QAction("散点图", self)
-        scatter_action.triggered.connect(plot_action.create_scatter_dock)
+        scatter_action.triggered.connect(self.create_scatter_dock)
         plot_menu.addAction(scatter_action)
         
         help_menu = menubar.addMenu("帮助")
 
+
+
+    def create_scatter_dock(self):
+        # 检查 current_table 是否存在
+        if not hasattr(self, "current_table"):
+            return
+        dockWidget = QDockWidget("可关闭/右侧栏", self)
+        grid_group_box = PlotDockWidget().create_scatter(self.current_table)
+        dockWidget.setWidget(grid_group_box)
+
+        self.addDockWidget(Qt.RightDockWidgetArea, dockWidget)
+        dockWidget.setFeatures(QDockWidget.DockWidgetClosable)
 
     def onMyToolBarButtonClick(self, s):
         print("click", s)
