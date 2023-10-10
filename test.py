@@ -3,10 +3,9 @@
 
 import pandas as pd
 
-from PySide6.QtWidgets import QTableView, QApplication, QWidget, QSplitter, QGridLayout
+from PySide6.QtWidgets import QTableView, QApplication
 from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex
-
-import modules.uil as uil
+import sys
 
 
 class PandasModel(QAbstractTableModel):
@@ -14,10 +13,7 @@ class PandasModel(QAbstractTableModel):
 
     def __init__(self, dataframe: pd.DataFrame, parent=None):
         QAbstractTableModel.__init__(self, parent)
-        if dataframe is None:
-            self._dataframe = uil.getEmptyData()
-        else:
-            self._dataframe = dataframe
+        self._dataframe = dataframe
 
     def rowCount(self, parent=QModelIndex()) -> int:
         """ Override method from QAbstractTableModel
@@ -43,20 +39,12 @@ class PandasModel(QAbstractTableModel):
 
         Return data cell from the pandas DataFrame
         """
-        i = index.row()
-        j = index.column()
-
         if not index.isValid():
             return None
 
         if role == Qt.DisplayRole:
-            value = self._dataframe.iloc[i, j]
-            if pd.isnull(value):
-                return ''
-            return str(value)
-        elif role == Qt.EditRole:
-            return str(value)
-        
+            return str(self._dataframe.iloc[index.row(), index.column()])
+
         return None
 
     def headerData(
@@ -76,29 +64,19 @@ class PandasModel(QAbstractTableModel):
         return None
 
 
-class DataFrameWidget(QWidget):
-    """Widget containing a tableview and toolbars"""
-    def __init__(self, parent=None, dataframe=None, app=None):
+if __name__ == "__main__":
 
-        super().__init__()
-        self.splitter = QSplitter(Qt.Vertical, self)
-        l = self.layout = QGridLayout()
-        l.setSpacing(2)
-        l.addWidget(self.splitter,1,1)
-        self.table = PandasModel(self, dataframe)
-        self.splitter.addWidget(self.table)
-        self.splitter.setSizes((500,200))
-        # if toolbar == True:
-        #     self.createToolbar()
-        # if statusbar == True:
-        #     self.statusBar()
-        # self.pf = None
-        # self.app = app
-        # self.pyconsole = None
-        # self.subtabledock = None
-        # self.subtable = None
-        # self.filterdock = None
-        # self.finddock = None
-        # self.mode = 'default'
-        # self.table.model.dataChanged.connect(self.stateChanged)
-        return
+    app = QApplication(sys.argv)
+
+    df = pd.read_csv("iris.csv")
+
+    view = QTableView()
+    view.resize(800, 500)
+    view.horizontalHeader().setStretchLastSection(True)
+    view.setAlternatingRowColors(True)
+    view.setSelectionBehavior(QTableView.SelectRows)
+
+    model = PandasModel(df)
+    view.setModel(model)
+    view.show()
+    app.exec()

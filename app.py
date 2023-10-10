@@ -2,12 +2,13 @@ import sys
 import pandas as pd
 
 from PySide6.QtWidgets import *
-from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize
-from PySide6.QtGui import QAction, QIcon, QKeySequence
+from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize, QRect
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QGuiApplication
 
 from modules.dataframe_model import PandasModel
 from modules.mpl_plot import PlotWidget
-from modules.visualization import PlotDockWidget
+from modules.form_widget import FormWidget
+# from modules.menu_module import MainMenu, FileSlot, PlotSlot
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -16,28 +17,45 @@ from matplotlib.figure import Figure
 class AppMainWindow(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Pandas Model")
-        self.resize(800, 500)
+        self.setWindowTitle("EZDAP")
+        # self.resize(800, 500)
 
         self.create_menu()
-        # 创建一个空的表格
-        self.table_widget = QTableWidget()
-        self.setCentralWidget(self.table_widget)
-        # self.create_tool_bar()
-        # self.setStatusBar(QStatusBar(self))
+        # self.file_menu = FileSlot(self)
+        # self.plot_menu = PlotSlot(self)
+        # self.table_widget = QTableWidget()
+        # self.setCentralWidget(self.table_widget)
 
-    def create_table_widget(self, data_frame):
+        self.main = QWidget(self)
+        self.tabs = QTabWidget(self.main)
+        layout = QHBoxLayout(self.main)
+        layout.addWidget(self.tabs)
+        screen_resolution = QGuiApplication.primaryScreen().availableGeometry()
+        width, height = int(screen_resolution.width()*0.7), int(screen_resolution.height()*.7)
+        if screen_resolution.width()>1024:
+            self.setGeometry(QRect(200, 200, width, height))
+        self.setMinimumSize(400,300)
+        self.main.setFocus()
+        self.setCentralWidget(self.main)
+
+    def create_table_widget(self, data_frame=None):
         view = QTableView()
-        view.horizontalHeader().setStretchLastSection(True)
+        view.horizontalHeader().setStretchLastSection(False)
         view.setAlternatingRowColors(True)
         view.setSelectionBehavior(QTableView.SelectRows)
         # df = pd.read_csv(data_frame)
-        model = PandasModel(data_frame)
-        view.setModel(model)
-        self.current_table = data_frame
-        self.tabWidget = QTabWidget(self)
-        self.tabWidget.addTab(view, "iris.csv")
-        self.setCentralWidget(self.tabWidget)
+        self.data_model = PandasModel(data_frame)
+        view.setModel(self.data_model)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.addWidget(view)
+        # form = FormWidget(data_frame=model._dataframe, app_name='scatter')
+        form = FormWidget()
+        self.right_form = form.grid_group_box
+        self.splitter.addWidget(self.right_form)
+        self.splitter.setSizes((500,200))
+        # self.current_table = None
+        self.tabs.insertTab(0, self.splitter, "demo")
+        self.setCentralWidget(self.tabs)
 
 
     def create_tool_bar(self):
@@ -62,64 +80,71 @@ class AppMainWindow(QMainWindow):
         self.addToolBar(toolbar)
 
     def create_menu(self):
-        menubar = self.menuBar()
+        menubar = QMenuBar(self)
         file_menu = menubar.addMenu("文件")
 
-        new_action = QAction("新建", self)
-        # new_action.triggered.connect(self.new_document)
+        new_action = QAction("新建", menubar)
+        # 打开一个空表格
+        new_action.triggered.connect(self.new_document)
         file_menu.addAction(new_action)
 
-        open_action = QAction("打开", self)
+        open_action = QAction("打开", menubar)
+        # 打开一个表格文件
         open_action.triggered.connect(self.open_document)
         file_menu.addAction(open_action)
 
-        save_action = QAction("保存", self)
-        save_action.triggered.connect(self.save_document)
+        save_action = QAction("保存", menubar)
+        # todo
+        # save_action.triggered.connect(self.save_document)
         file_menu.addAction(save_action)
 
-        exit_action = QAction("退出", self)
+        exit_action = QAction("退出", menubar)
+        # 退出程序
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
         edit_menu = menubar.addMenu("编辑")
-        edit_menu.addAction(QAction("剪切", self))
+        edit_menu.addAction(QAction("剪切", menubar))
 
         stat_menu = menubar.addMenu("统计")
-        t_test = QAction("T检验", self)
+        t_test = QAction("T检验", menubar)
         stat_menu.addAction(t_test)
 
         # plot_action = PlotAction(self)
         plot_menu = menubar.addMenu("可视化")
-        scatter_action = QAction("散点图", self)
+        scatter_action = QAction("散点图", menubar)
         scatter_action.triggered.connect(self.create_scatter_dock)
         plot_menu.addAction(scatter_action)
         
         help_menu = menubar.addMenu("帮助")
 
-
+        self.setMenuBar(menubar)
 
     def create_scatter_dock(self):
         # 检查 current_table 是否存在
-        if not hasattr(self, "current_table"):
+        if not hasattr(self, "data_model"):
+            print("请先打开一个表格")
             return
-        dockWidget = QDockWidget("可关闭/右侧栏", self)
-        grid_group_box = PlotDockWidget().create_scatter(self.current_table)
-        dockWidget.setWidget(grid_group_box)
-
-        self.addDockWidget(Qt.RightDockWidgetArea, dockWidget)
-        dockWidget.setFeatures(QDockWidget.DockWidgetClosable)
-
-    def onMyToolBarButtonClick(self, s):
-        print("click", s)
+        form = FormWidget(data_frame=self.data_model._dataframe, app_name='scatter')
+        # self.splitter.removeWidget(self.right_form)
+        self.right_form = form.grid_group_box
+        self.splitter.replaceWidget(1, self.right_form)
+        return
 
 
     def new_document(self):
-        self.table_widget.clear()
+        """
+        新建一个表格在左边，右边显示可视化界面
+        """
+        self.create_table_widget(None)
 
+
+    
     def open_document(self):
+        print("Open document called")
         options = QFileDialog.Options()
         options |= QFileDialog.ReadOnly
-        file_name, _ = QFileDialog.getOpenFileName(self, "打开表格文件", "", "表格文件 (*.csv *.xlsx);;所有文件 (*)", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(None, "打开表格文件", "", "表格文件 (*.csv *.xlsx);;所有文件 (*)", options=options)
         if file_name:
             try:
                 # 读取表格文件并加载到QTableWidget中
@@ -128,45 +153,8 @@ class AppMainWindow(QMainWindow):
             except pd.errors.ParserError:
                 print("无法打开此文件")
 
-    def save_document(self):
-        options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getSaveFileName(self, "保存文件", "", "文本文件 (*.txt);;所有文件 (*)", options=options)
-        if file_name:
-            with open(file_name, "w") as file:
-                file.write(self.table_to_csv())
-
-    def load_table_data(self, data_frame):
-        self.table_widget.setRowCount(data_frame.shape[0])
-        self.table_widget.setColumnCount(data_frame.shape[1])
-
-        # 设置表头
-        self.table_widget.setHorizontalHeaderLabels(data_frame.columns.tolist())
-
-        for row in range(data_frame.shape[0]):
-            for col in range(data_frame.shape[1]):
-                item = QTableWidgetItem(str(data_frame.iat[row, col]))
-                self.table_widget.setItem(row, col, item)
-
-    def table_to_csv(self):
-        num_rows = self.table_widget.rowCount()
-        num_cols = self.table_widget.columnCount()
-        csv_data = []
-
-        # 获取列名
-        column_names = [self.table_widget.horizontalHeaderItem(col).text() for col in range(num_cols)]
-        csv_data.append(",".join(column_names))
-
-        for row in range(num_rows):
-            row_data = []
-            for col in range(num_cols):
-                item = self.table_widget.item(row, col)
-                if item:
-                    row_data.append(item.text())
-                else:
-                    row_data.append("")
-            csv_data.append(",".join(row_data))
-
-        return "\n".join(csv_data)
+    def close(self) -> bool:
+        return super().close()
 
 if __name__ == "__main__":
 
