@@ -54,6 +54,7 @@ class AppMainWindow(QMainWindow):
         self.splitter.addWidget(self.right_form)
         self.splitter.setSizes((500,200))
         # self.current_table = None
+        self.tabs.removeTab(0)
         self.tabs.insertTab(0, self.splitter, "demo")
         self.setCentralWidget(self.tabs)
 

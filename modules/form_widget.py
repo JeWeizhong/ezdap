@@ -2,7 +2,7 @@
 可视化菜单
 '''
 
-from PySide6.QtWidgets import QMenu, QToolBar, QWidget, QDockWidget, QComboBox, QFormLayout, QGroupBox, QLabel
+from PySide6.QtWidgets import QMenu, QToolBar, QWidget, QDockWidget, QComboBox, QFormLayout, QGroupBox, QLabel, QPushButton, QHBoxLayout
 from PySide6.QtCore import QAbstractTableModel, Qt, QModelIndex, QSize
 from PySide6.QtGui import QAction, QIcon, QKeySequence
 
@@ -28,6 +28,14 @@ class FormWidget:
         yaixs = QComboBox()
         yaixs.addItems(data_frame.columns.tolist())
         layout.addRow(QLabel("y 轴"), yaixs)
+        # 提交按钮, 重置按钮
+        # 水平布局
+        h_layout = QHBoxLayout() 
+        submit_button = QPushButton("Submit")
+        reset_button = QPushButton("Reset")
+        h_layout.addWidget(submit_button)
+        h_layout.addWidget(reset_button)
+        layout.addRow(h_layout)
         grid_group_box.setLayout(layout)
 
         return grid_group_box
